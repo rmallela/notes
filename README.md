@@ -1,2 +1,4 @@
 # notes
-Notes for all imp utilities
+
+see algorithms at https://santhosh-tekuri.github.io/notes
+

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link href="fonts/fonts.css" rel="stylesheet"></link>
+<title>Editor</title>
+<style type="text/css" media="screen">
+    #editor { 
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        font-family: 'Go Mono'; 
+        font-size: 16px; 
+        line-height: 150%;
+    }
+</style>
+</head>
+<body>
+
+<div id="editor"></div>
+    
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.9/ace.js" type="text/javascript" charset="utf-8"></script>
+<script>
+    var editor = ace.edit("editor");
+    editor.setTheme("ace/theme/xcode");
+    editor.setShowPrintMargin(false);
+
+    var href = window.location.href;
+    if(href.endsWith(".go"))
+        editor.getSession().setMode("ace/mode/golang");
+    else
+        editor.getSession().setMode("ace/mode/java");
+    
+    var hash = href.indexOf("#");
+    if(hash==-1) {
+        home = href.substring(0, href.lastIndexOf("/")+1);
+        href = home+defaultPage;
+    } else {
+        home = href.substring(0, href.lastIndexOf("/", hash)+1);
+        href = href.substring(hash+1);
+        hash = href.indexOf("#");
+        if(hash!=-1) {
+            anchor = href.substring(hash+1);
+            href = href.substring(0, hash);
+        }
+        href = href.includes("://") ? href : home+href
+    }
+
+    var slash = href.lastIndexOf('/');
+    document.title = href.substring(slash+1);
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', href, true);
+    xhr.onload = function(e) {
+        if(this.status==200) {
+            editor.setValue(this.response);
+            editor.clearSelection();
+            editor.focus();
+            editor.scrollToRow(0);
+            editor.gotoLine(1);
+        } else
+            alert(this.status+" "+this.statusText);
+    };
+    xhr.onerror = function(e) {
+        alert("Error");
+    };
+    xhr.send();
+</script>
+</body>
+</html>

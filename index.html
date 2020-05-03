@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html><head>
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon"></link>
+
+<!--*************************************[ Markdown2HTML ] *************************************-->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/emojione/2.2.7/lib/js/emojione.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/1.8.3/showdown.min.js"></script>
+<script>
+showdown.setOption('requireSpaceBeforeHeadingText', true);
+showdown.setOption('tables', true);
+
+function extension(name, func) {
+    showdown.extension(name, function() {
+        return [{
+            type: "listener",
+            listeners: {
+                'paragraphs.before': func
+            }
+        }]
+    });
+}
+
+// github-emoji, font-awesome
+extension("emoji", function (event, text, options, globals) {
+    return text.replace(/:([\S]+?):/g, function(g0, g1) {
+        if(g1.startsWith("fa-")) {
+            g1 = g1.replace(new RegExp(",", 'g'), " ");
+            return `<i class="fa ${g1}" aria-hidden="true"></i>`;
+        } else if(g1.startsWith("icon-"))
+            return `<i class="${g1} fa-lg"></i>`;
+        else
+            return emojione.shortnameToImage(g0);
+    });
+});
+
+// https://github.com/modosc/showdown-container
+extension("container", function (event, text, options, globals) {
+    // if our last tag isn't closed then close it at the end of our input text
+    var count = (text.match(/:::/g) || []).length;
+    if (count % 2) {
+        text += "\n:::\n";
+    }
+    return text.replace(/:::(.*?)([\r\n][\s\S]*?):::/mgi, function (match, args, body) {
+        var props = '';
+        if (args) {
+            props = ' class="' + args.trim().split(/\s+/).map(function(a) { return encodeURIComponent(a) }).join(" ") + '"';
+        }
+        return "<div"+ props  + ">\n" + body + "\n</div>\n";
+    });
+});
+
+converter = new showdown.Converter({
+    extensions: [ "container", "emoji" ]
+});
+
+function markdown2html(markdown) {
+    return converter.makeHtml(markdown);
+}
+</script>
+
+<!--*************************************[ SyntaxHighlight ] *************************************-->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.4.0/languages/go.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/languages/yaml.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/atom-one-light.min.css"></link>
+<script>
+function syntaxHighlight() {
+    hljs.initHighlighting.called = false;
+    hljs.initHighlighting();
+}
+</script>
+
+
+<!--*************************************[ RenderLatex ] *************************************-->
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<script>
+function renderLatex() {
+    MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+}
+</script>
+
+<!--
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css" integrity="sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb" crossorigin="anonymous">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.js" integrity="sha384-OMvkZ24ANLwviZR2lVq8ujbE/bUO8IR1FdBrKLQBI14Gq5Xp/lksIccGkmKL8m+h" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/contrib/auto-render.min.js" integrity="sha384-cXpztMJlr2xFXyDSIfRWYSMVCXZ9HeGXvzyKTYrn03rsMAlOtIQVzjty5ULbaP8L" crossorigin="anonymous"></script>
+<script>
+function renderLatex() {
+    renderMathInElement(document.body, {
+        colorIsTextColor: true
+    });
+}
+</script>
+-->
+
+<!--*************************************[ RenderGraphviz ] *************************************-->
+
+<!-- https://github.com/mdaines/viz.js/ -->
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/1.8.0/viz.js"></script>
+<script>
+function renderGraphviz() {
+    var codes = document.getElementsByTagName('code');
+    var i=0;
+    while(i<codes.length) {
+        var code = codes[i];
+        if(code.classList.contains("graphviz")) {
+            var div = document.createElement('div')
+            div.innerHTML = Viz(code.textContent, "svg");
+            var pre = code.parentNode;
+            pre.parentNode.replaceChild(div.getElementsByTagName("svg")[0], pre);
+        } else
+           i++;
+    }
+}
+</script>
+
+<!--*************************************[ Main ] *************************************-->
+
+<script>
+defaultPage = 'index.md';
+
+function resolve(p1, p2) {
+    if(p2.startsWith("#")) {
+        return p1+p2;
+    }
+
+    p1 = p1.substring(0, p1.lastIndexOf('/')+1);
+    while(p2.startsWith("../")) {
+        var index = p1.lastIndexOf("/", p1.length-2);
+        if(index==-1)
+            break;
+        p1 = p1.substring(0, index+1);
+        p2 = p2.substring(3);
+    }
+    return p1+p2;
+}
+
+function getURL() {
+    var url = {};
+    var href = window.location.href;
+    var hash = href.indexOf("#");
+    if(hash==-1) {
+        url.home = href.substring(0, href.lastIndexOf("/")+1);
+        url.href = url.home+defaultPage;
+    } else {
+        url.home = href.substring(0, href.lastIndexOf("/", hash)+1);
+        href = href.substring(hash+1);
+        hash = href.indexOf("#");
+        if(hash!=-1) {
+            url.anchor = href.substring(hash+1);
+            href = href.substring(0, hash);
+        }
+        url.href = href.includes("://") ? href : url.home+href
+    }
+    url.base = url.href.substring(0, url.href.lastIndexOf('/')+1);
+    url.resolve = function(path, relative) {
+        path = resolve(this.href, path);
+        if(relative)
+            return path.startsWith(this.home) ? path.substring(this.home.length) : path;
+        else
+            return path;
+    }
+    return url;
+}
+
+home = window.location.href;
+if(home.indexOf("#")!=-1)
+    home = home.substring(0, home.indexOf("#"));
+home = home.substring(0, home.lastIndexOf("/")+1);
+
+function updateTitle() {
+    h1Elements = document.body.getElementsByTagName('h1');
+    document.title = h1Elements.length>0 ? h1Elements[0].innerText : "untitled";
+}
+
+function deleteEmptyParagraphs() {
+    var paragraphs = document.getElementsByTagName('p');
+    var i = 0;
+    while(i<paragraphs.length) {
+        var paragraph = paragraphs[i];
+        if(paragraph.childNodes.length==0)
+            paragraph.parentNode.removeChild(paragraph);
+        else
+            i++;
+    }
+}
+
+function fixLinks(url) {
+    var links = document.getElementsByTagName('a');
+    for(var i=0; i<links.length; i++) {
+        var link = links[i];
+        var href = link.getAttribute("href");
+        if(href.includes("://")) {
+            link.target = "_blank";
+        } else if(href.endsWith(".md") || href.includes(".md#") || href.startsWith("#")) {
+            link.href = "#"+url.resolve(href, true);
+        } else {
+            link.href = url.resolve(href, false);
+            link.target = "_blank";
+        }
+    }
+}
+
+function fixImages(url) {
+    var imgs = document.getElementsByTagName('img');
+    for(var i=0; i<imgs.length; i++) {
+        var img = imgs[i];
+        var src = img.getAttribute("src");
+        if(!src.includes("://")) {
+            img.src = url.resolve(src, false);
+        }
+    }
+}
+
+function embedYoutube() {
+    var prefix = "https://www.youtube.com/watch?v=";
+    var links = document.getElementsByTagName('a');
+    var i=0;
+    while(i<links.length) {
+        var link = links[i];
+        var href = link.getAttribute("href");
+        if(href.startsWith(prefix)) {
+            var iframe = document.createElement("iframe");
+            iframe.setAttribute("width", 560);
+            iframe.setAttribute("height", 315);
+            iframe.setAttribute("src", "https://www.youtube.com/embed/"+href.substring(prefix.length)+"?rel=0");
+            iframe.setAttribute("frameborder", "0");
+            iframe.setAttribute("allowfullscreen", "true");
+            link.parentNode.replaceChild(iframe, link);
+        } else
+           i++;
+    }
+}
+
+function firstIndexOf(str, from, chars) {
+    var r = -1;
+    for(var i=0; i<chars.length; i++) {
+        var index = str.indexOf(chars[i], from);
+        if(r==-1)
+            r = index;
+        else if(index!=-1)
+            r = Math.min(r, index);
+    }
+    return r;
+}
+
+// adapted from https://github.com/Khan/KaTeX/blob/master/contrib/auto-render/splitAtDelimiters.js
+function escapeLatex(text) {
+    var out = "";
+    var from = 0;
+    while(true) {
+        var index = firstIndexOf(text, from, "\\`$");
+        if(index==-1) {
+            out += text.substring(from);
+            break;
+        }
+        switch(text[index]) {
+        case "\\":
+            var to = index+2;
+            out += text.substring(from, to);
+            from = to;
+            break;
+        case "`":
+            if(text.substr(index, 3)=="```") {
+                var end = text.indexOf("```", index+3);
+                var to = end==-1 ? from+3 : end+3;
+                out += text.substring(from, to);
+                from = to;
+            } else {
+                var end = text.indexOf("`", index+1);
+                var to = end==-1 ? from+1 : end+1;
+                out += text.substring(from, to);
+                from = to;
+            }
+            break;
+        case "$":
+            var delimiter = text.substr(index, 2)=="$$" ? "$$" : "$";
+            var end = index+delimiter.length;
+            var depth = 0;
+            while(end<text.length) {
+                var ch = text[end];
+                if(depth==0 && text.slice(end, end+delimiter.length)==delimiter) {
+                    end += delimiter.length;
+                    break;
+                } else if(ch=="\\") {
+                    end++;
+                } else if(ch=="{") {
+                    depth++;
+                } else if(ch=="}") {
+                    depth--;
+                }
+                end++;
+            }
+            out += text.substring(from, index) + "`"+text.substring(index, end)+"`";
+            from = end;
+        }
+    }
+    return out;
+}
+
+// curl -O https://yihui.name/js/math-code.js
+function fixLatex() {
+  var i, text, code, codes = document.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\$[^$]/.test(text) && /[^$]\$$/.test(text)) {
+        text = text.replace(/^\$/, '\\(').replace(/\$$/, '\\)');
+        code.textContent = text;
+      }
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$(.|\s)+\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+}
+
+function evalFunctions(url) {
+    var codes = document.getElementsByTagName('code')
+    var i = 0;
+    while(i<codes.length) {
+        var code = codes[i];
+        if(code.parentNode.tagName!=='PRE') {
+            var text = code.textContent;
+            if(text.startsWith("@")) {
+                var open = text.indexOf('(');
+                var func = text.substring(1, open);
+                var args = text.substring(open+1, text.length-1);
+                if(func=="src") {
+                    var links = "";
+                    var files = args.split(",")
+                    for(var j=0; j<files.length; j++) {
+                        var file = files[j].trim();
+                        var href = url.home + "editor.html#"+url.resolve(file, true);
+                        var lang = file.substring(file.lastIndexOf('.')+1)
+                        links += `<a href="${href}" target="_blank"><i class="icon-${lang} fa-lg"></i></a>`;
+                    }   
+                    var div = document.createElement('div');
+                    div.setAttribute("class", "src");
+                    div.innerHTML = links;
+                    code.parentNode.replaceChild(div, code);
+                    continue;
+                }
+            }
+        }
+        i++;
+    }
+}
+
+function renderMarkdown(markdown) {
+    markdown = escapeLatex(markdown);
+    document.body.innerHTML = markdown2html(markdown);
+    
+    var url = getURL();
+	updateTitle();
+    deleteEmptyParagraphs();
+    fixLinks(url);
+    fixImages(url);
+    fixLatex();
+    embedYoutube();
+    renderGraphviz();
+    syntaxHighlight();
+    renderLatex();
+    evalFunctions(url);
+
+	// update viewport
+    if(url.anchor)
+        var anchor = document.getElementById(url.anchor);
+    if(anchor)
+        anchor.scrollIntoView();
+    else
+        scroll(0, 0);
+}
+
+function navigate() {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', getURL().href, true);
+    xhr.onload = function(e) {
+        if(this.status==200)
+            renderMarkdown(this.response);
+        else
+            renderMarkdown("# "+this.status+" "+this.statusText);
+    };
+    xhr.onerror = function(e) {
+        renderMarkdown("# Error");
+    };
+    xhr.send();
+}
+window.onload = navigate;
+window.onhashchange = navigate;
+</script>
+
+<!--*************************************[ Stylesheet ] *************************************-->
+
+<link href="https://fonts.googleapis.com/css?family=Open+Sans:400italic,700italic,700,400&subset=latin,latin-ext" rel="stylesheet"></link>
+<link href="fonts/fonts.css" rel="stylesheet"></link>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"></link>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-mfizz/2.4.1/font-mfizz.min.css" rel="stylesheet"></link>
+<style type="text/less">
+html {
+    background: #d9d9d9;
+    padding-bottom: 100vh; /* allow scrolling past end of page */
+}
+
+body {
+    background: #FFF;
+    font-family: "Open Sans";
+    line-height: 1.6;
+    max-width: 900px;
+    margin: auto;
+    margin-top: 20px;
+    padding: 100px;
+    min-height: ~"calc(100vh - 240px)";
+    border-radius: 6px;
+}
+
+a {
+    color: #4183C4;
+    text-decoration: none;
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+h1 {
+    border-bottom: 4px solid #3f87a6;
+    margin-bottom: 40px;
+    margin-top: 0;
+}
+h1>a:hover {
+    text-decoration: none;
+}
+
+h1, h2, h3 {
+    font-weight: normal;
+}
+
+li > ul {
+    padding-left: 20;
+}
+p + ul {
+    margin-top: -10;
+}
+li > p {
+    margin-top: 0;
+    margin-bottom: 10;
+}
+
+code {
+    font-family: "Go Mono", Consolas, "Lucida Console", Monaco, monospace;
+    line-height: 150%;
+    background: #eee;
+    border-radius: 3px;
+    border: 1px solid #eee;
+    padding: 1px 3px 1px 3px;
+}
+.hljs {
+    border-left: solid 5px #b3b3b3;
+    background: #eee;
+}
+
+hr { 
+    background-color: #fff;
+    border: 0;
+    border-top: 2px dashed #8c8b8b;
+    margin-top: 30px;
+    margin-bottom: 30px;
+}
+
+.container(@name, @bg, @border, @content) {
+    .@{name} {
+        border-left-style: solid;
+        border-left-width: 5px;
+        padding: 10px;
+        padding-left: 40px;
+        min-width: 42rem;
+        line-height: 18px;
+        overflow: hidden;
+        margin-bottom: 20px;
+        background-color: @bg;
+        border-color: @border;
+        &:before {
+            text-align: center;
+            font-family: FontAwesome;
+            font-size: 22px;
+            font-weight: bold;
+            float: left;
+            margin: 1px 0 -5px -35px;
+            width: 30px;
+            content: @content;
+        }
+    }
+    .@{name}>:first-child {
+        margin-top: 0;
+    }
+    .@{name}>:last-child {
+        margin-bottom: 0;
+    }
+}
+.container(warning, #ffe7e8, #e66465, '\00f06a');
+.container(tip, #c6e2cc, #309c40, '\00f0eb');
+.container(note, #fff3d4, #f6b73c, '\00f016');
+.note:before {
+    transform: scaleY(-.8) scaleX(.8);
+}
+
+.emojione {
+    font-size: inherit;
+    height: 3ex;
+    width: 3.1ex;
+    min-height: 20px;
+    min-width: 20px;
+    margin: -.2ex .15em .2ex;
+    line-height: normal;
+    vertical-align: middle;
+}
+
+.src {
+    float: right;
+    position: relative;
+    top: -50px;
+    right: 10px;
+    a {
+        color: black;
+    }
+}
+
+.toc ul {
+    padding-left: 0;
+    li {
+        list-style-type: none;
+        &:before {
+            font-family: 'FontAwesome';
+            content: '\f105';
+            margin:0 10px 0 0px;
+        }
+    }
+}
+
+p+ul {
+    margin-top: -16px;
+}
+</style>
+<script type="text/javascript">less = { env: 'development', errorReporting: 'console' };</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/less.js/2.7.2/less.min.js"></script>
+</head><body></body></html>
