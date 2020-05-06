@@ -2,7 +2,7 @@
 
 ::: toc
 * [Ansible](ansible.md)
-* [linux](linx/index.md)
+* [linux](linux/index.md)
 
 :::
 
